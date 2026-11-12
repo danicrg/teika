@@ -63,6 +63,8 @@ final class NoteStore {
             return WatchInsert(note: note, inserted: false)
         }
         let note = Note(text: text, createdAt: createdAt, watchClipID: clipID)
+        // Like a dictation on the phone, a watch note waits to be reviewed and saved.
+        note.isDraft = true
         prepareTaskExport(note)
         container.mainContext.insert(note)
         try container.mainContext.save()

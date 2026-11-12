@@ -19,6 +19,12 @@ final class DraftSaveUITests: XCTestCase {
         XCTAssertEqual(editor.value as? String, "Pick up the bike from the shop.")
         XCTAssertTrue(app.buttons["Discard note"].exists)
 
+        // It also waits in the library's To review section, and opens back here from it.
+        app.buttons["Notes"].tap()
+        XCTAssertTrue(app.staticTexts["To review"].waitForExistence(timeout: 3))
+        app.staticTexts["Pick up the bike from the shop."].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+
         // Just past the end of the first line, where a thumb would put the cursor.
         editor.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.0))
             .withOffset(CGVector(dx: 0, dy: 22)).tap()

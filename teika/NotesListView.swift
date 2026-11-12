@@ -7,6 +7,8 @@ struct NotesListView: View {
     /// The detail push goes through the root stack's path rather than local state, so
     /// that a launch request can clear the whole stack in one move.
     @Binding var path: [Route]
+    /// Opens a note waiting for review in the main screen's editor.
+    var onReview: (Note) -> Void = { _ in }
     @Binding var showsRecordingShortcutPrompt: Bool
     /// A presentation-only debug override. The SwiftData query and its models remain
     /// untouched, so turning this off reveals the real library again.
@@ -36,7 +38,7 @@ struct NotesListView: View {
         var recentNotes: [Date: [Note]] = [:]
         var olderNotes: [Note] = []
 
-        for note in filteredNotes {
+        for note in filteredNotes where note.isDraft != true {
             let day = calendar.startOfDay(for: note.createdAt)
             if day >= recentWindowStart {
                 recentNotes[day, default: []].append(note)
@@ -45,7 +47,10 @@ struct NotesListView: View {
             }
         }
 
-        var sections = recentNotes.keys.sorted(by: >).map { day in
+        let toReview = filteredNotes.filter { $0.isDraft == true }
+        var sections = toReview.isEmpty ? [] : [NoteSection(
+            id: .review, title: "To review", notes: toReview, showsDate: true)]
+        sections += recentNotes.keys.sorted(by: >).map { day in
             NoteSection(
                 id: .day(day),
                 title: Self.sectionTitle(for: day, calendar: calendar),
@@ -221,7 +226,7 @@ struct NotesListView: View {
 
     private func noteRow(_ note: Note, showsDate: Bool) -> some View {
         Button {
-            copy(note)
+            if note.isDraft == true { onReview(note) } else { copy(note) }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(note.title)
@@ -232,7 +237,9 @@ struct NotesListView: View {
                         date: showsDate ? .abbreviated : .omitted,
                         time: .shortened
                     )
-                ) + Text(note.isDraft == true ? " · Draft" : (note.vaultState == .saved ? " · In Obsidian" : "")))
+                ) + Text(note.isDraft == true
+                    ? (note.watchClipID != nil ? " · Watch" : "")
+                    : (note.vaultState == .saved ? " · In Obsidian" : "")))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             }
@@ -240,7 +247,8 @@ struct NotesListView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Copies this note. Swipe for more actions.")
+        .accessibilityHint(note.isDraft == true
+            ? "Opens this note to edit and save." : "Copies this note. Swipe for more actions.")
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 context.delete(note)
@@ -313,6 +321,7 @@ struct NotesListView: View {
 
 private struct NoteSection: Identifiable {
     enum ID: Hashable {
+        case review
         case day(Date)
         case older
     }

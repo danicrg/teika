@@ -220,6 +220,19 @@ final class ObsidianExportTests: XCTestCase {
         XCTAssertEqual(store.currentDraft()?.text, "Old draft")
     }
 
+    func testWatchNotesWaitInToReview() throws {
+        let store = try NoteStore(inMemory: true)
+        let watch = try store.addWatchNote(text: "From the wrist", createdAt: date, clipID: "clip-1")
+        XCTAssertTrue(watch.inserted)
+        XCTAssertEqual(watch.note.isDraft, true)
+        XCTAssertEqual(store.currentDraft()?.watchClipID, "clip-1")
+        // A retried transfer must not turn a reviewed note back into a draft.
+        watch.note.isDraft = nil
+        let again = try store.addWatchNote(text: "From the wrist", createdAt: date, clipID: "clip-1")
+        XCTAssertFalse(again.inserted)
+        XCTAssertNil(again.note.isDraft)
+    }
+
     func testDictationGoesInAtTheCursorWithSensibleSpacing() {
         XCTAssertEqual(DraftText.insert("More.", into: "First thought.").text, "First thought. More.")
         XCTAssertEqual(DraftText.insert(" More. ", into: "Line\n").text, "Line\nMore.")

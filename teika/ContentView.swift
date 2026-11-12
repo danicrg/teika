@@ -115,6 +115,11 @@ struct ContentView: View {
                 case .notes:
                     NotesListView(
                         path: $path,
+                        onReview: { note in
+                            activeTranscript = nil
+                            openDraft(note)
+                            path.removeAll()
+                        },
                         showsRecordingShortcutPrompt: recordingShortcutPromptBinding,
                         showsEmptyState: showsEmptyNotesState,
                         showsAppStoreScreenshots: showsAppStoreScreenshots
@@ -130,6 +135,7 @@ struct ContentView: View {
                     NavigationLink(value: Route.notes) {
                         Label("Notes", systemImage: "list.bullet")
                     }
+                    .badge(reviewCount)
                 }
             }
             .alert("Download speech model?", isPresented: $showsDownloadConfirmation) {
@@ -391,7 +397,12 @@ struct ContentView: View {
             break
         }
         guard let text = watchInbox.take() else { return }
-        present(.plain(text))
+        // Open it for review unless another note is already being worked on here; it
+        // waits in To review either way.
+        if liveDraft == nil {
+            if let note = store.currentDraft(), note.watchClipID != nil { openDraft(note) }
+            else { present(.plain(text)) }
+        }
     }
 
     private var transcriptView: some View {
@@ -820,6 +831,11 @@ struct ContentView: View {
     }
 
     // MARK: Draft
+
+    /// Notes waiting in To review, not counting the one open on this screen.
+    private var reviewCount: Int {
+        notes.filter { $0.isDraft == true && $0.persistentModelID != liveDraft?.persistentModelID }.count
+    }
 
     /// Nil once the draft has been deleted, e.g. from the library.
     private var liveDraft: Note? {
