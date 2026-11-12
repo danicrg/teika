@@ -78,7 +78,7 @@ struct TeikaApp: App {
         store.defaults.set(Data([1]), forKey: ObsidianExporter.bookmarkKey)
         store.defaults.set(root.lastPathComponent, forKey: ObsidianExporter.vaultNameKey)
         let obsidian = ObsidianExporter(store: store) { VaultWriter(root: root, scoped: false) }
-        if let text = value("-teika-debug-note") { _ = try? store.add(text: text) }
+        if let text = value("-teika-debug-note") { _ = try? store.add(text: text, isDraft: true) }
         return obsidian
     }
     #endif

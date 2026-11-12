@@ -137,9 +137,9 @@ struct SettingsView: View {
             Text("Obsidian")
         } footer: {
             if obsidian.vaultName == nil {
-                Text("Pick your vault’s folder, for example iCloud Drive › Obsidian › My Vault. Each new note is saved there as its own Markdown file, without opening Obsidian.")
+                Text("Pick your vault’s folder, for example iCloud Drive › Obsidian › My Vault. Notes you save are written there as Markdown files, without opening Obsidian.")
             } else {
-                Text("Each new note becomes its own file. Edits in Teika update it until the file is changed in Obsidian.")
+                Text("Tap Save on a note to write it here as its own file. Nothing is saved before that. Saving the same note again updates its file, unless it was changed in Obsidian.")
             }
         }
 

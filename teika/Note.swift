@@ -20,8 +20,12 @@ final class Note {
     var reminderID: String?
     var taskExportFailureRaw: String?
 
-    // Obsidian vault export. Optional for lightweight migration; a nil state means the
-    // note was never meant for the vault (it predates the setting, or it was off).
+    /// The note being composed on the main screen: dictated and edited, not yet saved.
+    /// Optional for lightweight migration; nil means a finished note.
+    var isDraft: Bool?
+
+    // Obsidian vault export. Optional for lightweight migration; nil means the note
+    // has never been saved to the vault.
     var vaultStateRaw: String?
     var vaultPath: String?
     var vaultPrefix: String?
@@ -62,14 +66,8 @@ final class Note {
         }
     }
 
-    /// True when the vault file is behind the note, or the note has no file yet.
-    var needsVaultSync: Bool {
-        switch vaultState {
-        case .pending?, .failed?: true
-        case .saved?: text != vaultSyncedText
-        default: false
-        }
-    }
+    /// Saved to the vault, then changed in Teika.
+    var hasUnsavedVaultChanges: Bool { vaultState == .saved && text != vaultSyncedText }
 
     init(text: String, createdAt: Date = .now, watchClipID: String? = nil) {
         self.text = text
@@ -98,13 +96,9 @@ enum TaskExportState: String {
 }
 
 enum VaultState: String {
-    /// Waiting for its first or next write.
-    case pending
     case saved
     /// Changed in Obsidian since Teika wrote it; Teika stops writing to that file.
     case editedElsewhere
     /// Deleted or moved out of its folder in Obsidian.
     case missing
-    /// The last write failed; retried on the next change or launch.
-    case failed
 }

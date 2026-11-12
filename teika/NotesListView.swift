@@ -227,12 +227,12 @@ struct NotesListView: View {
                 Text(note.title)
                     .font(.body)
                     .lineLimit(1)
-                Text(
+                (Text(
                     note.createdAt.formatted(
                         date: showsDate ? .abbreviated : .omitted,
                         time: .shortened
                     )
-                )
+                ) + Text(note.isDraft == true ? " · Draft" : (note.vaultState == .saved ? " · In Obsidian" : "")))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             }

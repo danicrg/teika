@@ -66,12 +66,10 @@ struct NoteDetailView: View {
         }
         .onDisappear {
             saveChanges()
-            Task { await obsidian?.flush() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
                 saveChanges()
-                Task { await obsidian?.flush() }
             }
         }
         .alert("Couldn’t save changes", isPresented: $showsSaveError) {
@@ -95,7 +93,6 @@ struct NoteDetailView: View {
                 guard canEditNote, note.text != text else { return }
                 note.text = text
                 saveChanges()
-                obsidian?.noteEdited(note)
             }
         )
     }
@@ -112,7 +109,8 @@ struct NoteDetailView: View {
     }
 }
 
-/// Where this note stands in the vault, and a way out when Obsidian changed the file.
+/// Where this note stands in the vault, and the button that saves it there. Nothing is
+/// written until that button is tapped.
 private struct VaultStatusBar: View {
     let note: Note
     let obsidian: ObsidianExporter
@@ -120,26 +118,36 @@ private struct VaultStatusBar: View {
     var body: some View {
         HStack(spacing: 8) {
             switch note.vaultState {
-            case .saved?, .pending?:
+            case .saved? where !note.hasUnsavedVaultChanges:
                 Image(systemName: "checkmark.circle")
-                Text(note.vaultPath.map { ($0 as NSString).lastPathComponent } ?? "Saving to Obsidian…")
+                Text(note.vaultPath.map { ($0 as NSString).lastPathComponent } ?? "Saved")
                     .lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 0)
+            case .saved?:
+                Text("Changed since saved")
+                Spacer(minLength: 0)
+                saveButton("Save") { await obsidian.save(note) }
             case .editedElsewhere?:
                 Image(systemName: "exclamationmark.circle")
-                Text("Edited in Obsidian. Teika won’t overwrite it.")
+                Text("Changed in Obsidian")
                 Spacer(minLength: 0)
-                Button("Save as new") { obsidian.saveAsNewNote(note) }
+                saveButton("Save as new") { await obsidian.saveAsNewNote(note) }
             case .missing?:
                 Image(systemName: "exclamationmark.circle")
-                Text("Moved or deleted in Obsidian.")
+                Text("Moved or deleted in Obsidian")
                 Spacer(minLength: 0)
-                Button("Save as new") { obsidian.saveAsNewNote(note) }
-            case .failed?:
-                Image(systemName: "exclamationmark.circle")
-                Text("Couldn’t save to Obsidian yet.")
+                saveButton("Save as new") { await obsidian.saveAsNewNote(note) }
             case nil:
+                Text(note.isDraft == true ? "Draft" : "Not in Obsidian")
                 Spacer(minLength: 0)
-                Button("Send to Obsidian") { obsidian.send(note) }
+                saveButton("Save to Obsidian") {
+                    let saved = await obsidian.save(note)
+                    if saved {
+                        note.isDraft = nil
+                        try? note.modelContext?.save()
+                    }
+                    return saved
+                }
             }
         }
         .font(.footnote)
@@ -147,6 +155,12 @@ private struct VaultStatusBar: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func saveButton(_ title: String, action: @escaping () async -> Bool) -> some View {
+        Button(title) { Task { _ = await action() } }
+            .buttonStyle(.borderedProminent)
+            .disabled(obsidian.isSaving || note.text.trimmed.isEmpty)
     }
 }
 

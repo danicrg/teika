@@ -18,8 +18,6 @@ final class NoteStore {
     let container: ModelContainer
     let defaults: UserDefaults
     var onNoteSaved: (() -> Void)?
-    /// Separate from `onNoteSaved`, which the task exporter owns.
-    var onVaultNoteSaved: (() -> Void)?
 
     init(inMemory: Bool = false, defaults: UserDefaults = .standard, storeURL: URL? = nil) throws {
         self.defaults = defaults
@@ -33,14 +31,23 @@ final class NoteStore {
     }
 
     @discardableResult
-    func add(text: String, createdAt: Date = .now) throws -> Note {
+    func add(text: String, createdAt: Date = .now, isDraft: Bool = false) throws -> Note {
         let note = Note(text: text, createdAt: createdAt)
+        if isDraft { note.isDraft = true }
         prepareTaskExport(note)
         container.mainContext.insert(note)
         try container.mainContext.save()
         onNoteSaved?()
-        onVaultNoteSaved?()
         return note
+    }
+
+    /// The newest unsaved draft, so a draft survives the app being closed.
+    func currentDraft() -> Note? {
+        let descriptor = FetchDescriptor<Note>(
+            predicate: #Predicate { $0.isDraft == true },
+            sortBy: [SortDescriptor(\Note.createdAt, order: .reverse)])
+        // Re-check in memory: a draft finished but not yet saved still matches the store.
+        return (try? container.mainContext.fetch(descriptor))?.first { $0.isDraft == true }
     }
 
     func note(forWatchClipID clipID: String) throws -> Note? {
@@ -60,12 +67,10 @@ final class NoteStore {
         container.mainContext.insert(note)
         try container.mainContext.save()
         onNoteSaved?()
-        onVaultNoteSaved?()
         return WatchInsert(note: note, inserted: true)
     }
 
     private func prepareTaskExport(_ note: Note) {
-        if ObsidianExporter.isActive(in: defaults) { note.vaultState = .pending }
         let app = TaskExportApp.selected(in: defaults)
         guard app != .off else { return }
         note.taskExportAppRaw = app.rawValue

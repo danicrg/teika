@@ -35,6 +35,14 @@ struct ContentView: View {
     /// replayed the stream-in on its own.
     @State private var revealSerial = 0
     @State private var showCopied = false
+    @State private var toastText = "Copied to clipboard"
+    /// The note being composed here: dictated, edited, dictated into again, and only
+    /// written to the vault when saved. Persisted as a note, so it survives a relaunch.
+    @State private var draft: Note?
+    @State private var draftSelection: TextSelection?
+    @FocusState private var isEditingDraft: Bool
+    @State private var confirmsDiscard = false
+    @State private var draftNotice: String?
     @State private var network = NetworkMonitor()
     @State private var showsDownloadConfirmation = false
     /// Set when a transcription lands; consumed by the reveal's completion so the
@@ -80,12 +88,12 @@ struct ContentView: View {
                     config: orbConfig, presence: orbPresence
                 )
                 .ignoresSafeArea()
-                .opacity(activeText == nil ? 1 : 0.6)
-                .animation(.easeInOut(duration: 0.4), value: activeText == nil)
+                .opacity(liveDraft != nil ? 0.35 : (activeText == nil ? 1 : 0.6))
+                .animation(.easeInOut(duration: 0.4), value: activeText == nil && liveDraft == nil)
                 VStack(spacing: 20) {
                     transcriptView
                     statusLine
-                    primaryButton
+                    controlRow
                         .overlay(alignment: .top) {
                             if showsClipboardToast {
                                 clipboardToast
@@ -165,12 +173,6 @@ struct ContentView: View {
                 isActive: scenePhase == .active, canDispatch: exportAvailability)
         }
         .onChange(of: notes.count) { exporter.refresh() }
-        .onChange(of: scenePhase) { _, phase in
-            // Catch up on anything that failed (iCloud offline, say) when coming back,
-            // and finish writing before iOS suspends the app.
-            if phase == .active { obsidian?.syncAllPending() }
-            if phase == .background { Task { await obsidian?.flush() } }
-        }
         #if DEBUG
         .overlay {
             // The drawer itself must not appear in an App Store capture. Dial values are
@@ -198,12 +200,21 @@ struct ContentView: View {
                 #endif
                 // Only dictation started on *this* device reaches here; one from the
                 // watch is saved by `PhoneWatchLink` and arrives through `watchInbox`.
-                if let note = try? store.add(text: text) {
-                    present(.note(note))
+                if liveDraft != nil {
+                    insertIntoDraft(text)
+                } else if let note = try? store.add(text: text, isDraft: true) {
+                    openDraft(note)
                 } else {
                     present(.plain(text))
+                    return
+                }
+                // With a vault the note's destination is Obsidian, on Save; without
+                // one, keep Teika's clipboard hand-off.
+                if obsidian?.isEnabled != true, let text = liveDraft?.text {
+                    copyToClipboard(text)
                 }
             }
+            if let resumed = store.currentDraft() { openDraft(resumed) }
             presentWatchNote()
             drainLaunchRequest()
             await transcriber.prepareIfNeeded()
@@ -385,7 +396,9 @@ struct ContentView: View {
 
     private var transcriptView: some View {
         ZStack(alignment: .topLeading) {
-            if let text = activeText {
+            if let draft = liveDraft {
+                draftEditor(draft)
+            } else if let text = activeText {
                 ScrollView {
                     StreamingText(text: text) {
                         guard awaitingRevealConfirmation else { return }
@@ -418,7 +431,7 @@ struct ContentView: View {
     }
 
     private var clipboardToast: some View {
-        Text("Copied to clipboard")
+        Text(toastText)
             .font(.subheadline.weight(.medium))
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -449,6 +462,11 @@ struct ContentView: View {
     }
 
     private func confirmCopy() {
+        showToast("Copied to clipboard")
+    }
+
+    private func showToast(_ text: String) {
+        toastText = text
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation { showCopied = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -522,6 +540,11 @@ struct ContentView: View {
                                 Link("Open Settings", destination: url).font(.footnote)
                             }
                         }
+                    } else if let draftNotice {
+                        Text(draftNotice)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
                     } else if let launchNotice {
                         Text(launchNotice)
                             .font(.footnote)
@@ -791,8 +814,136 @@ struct ContentView: View {
 
     private func beginFreshRecording() {
         launchNotice = nil
+        draftNotice = nil
         activeTranscript = nil
         transcriber.startRecordingIfIdle()
+    }
+
+    // MARK: Draft
+
+    /// Nil once the draft has been deleted, e.g. from the library.
+    private var liveDraft: Note? {
+        #if DEBUG
+        if showsAppStoreScreenshots { return nil }
+        #endif
+        guard let draft, !draft.isDeleted, draft.modelContext != nil, draft.isDraft == true
+        else { return nil }
+        return draft
+    }
+
+    private func draftEditor(_ note: Note) -> some View {
+        TextEditor(text: Binding(
+            get: { note.isDeleted ? "" : note.text },
+            set: { text in
+                guard !note.isDeleted, note.modelContext != nil, note.text != text else { return }
+                note.text = text
+                try? store.container.mainContext.save()
+            }), selection: $draftSelection)
+            .font(.body)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .focused($isEditingDraft)
+            .accessibilityLabel("Note text")
+    }
+
+    /// The row under the transcript: the record button alone, or with Discard and Save
+    /// either side of it while a draft is open.
+    @ViewBuilder
+    private var controlRow: some View {
+        if liveDraft != nil {
+            HStack {
+                Button(role: .destructive) {
+                    confirmsDiscard = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.title3)
+                        .frame(width: 56, height: 56)
+                        .glassEffect(.regular.interactive(), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isDraftBusy)
+                .accessibilityLabel("Discard note")
+                .confirmationDialog(
+                    "Discard this note?", isPresented: $confirmsDiscard, titleVisibility: .visible
+                ) {
+                    Button("Discard", role: .destructive) { discardDraft() }
+                } message: {
+                    Text("It hasn’t been saved anywhere yet.")
+                }
+                Spacer()
+                primaryButton
+                Spacer()
+                Button {
+                    Task { await saveDraft() }
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.title3.weight(.semibold))
+                        .frame(width: 56, height: 56)
+                        .glassEffect(.regular.tint(.accentColor).interactive(), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isDraftBusy || (liveDraft?.text.trimmed.isEmpty ?? true))
+                .accessibilityLabel(obsidian?.isEnabled == true ? "Save to Obsidian" : "Save note")
+            }
+            .frame(maxWidth: 360)
+        } else {
+            primaryButton
+        }
+    }
+
+    private var isDraftBusy: Bool {
+        transcriber.activityState != .idle || obsidian?.isSaving == true
+    }
+
+    /// Typing and the next dictation both continue at the end.
+    private func openDraft(_ note: Note) {
+        draft = note
+        draftSelection = TextSelection(insertionPoint: note.text.endIndex)
+    }
+
+    /// Dictation goes where the cursor is, or at the end before the note was touched.
+    private func insertIntoDraft(_ dictated: String) {
+        guard let note = liveDraft else { return }
+        let text = note.text
+        var range: Range<Int>?
+        if case .selection(let selected)? = draftSelection?.indices,
+           selected.upperBound <= text.endIndex {
+            range = selected.lowerBound.utf16Offset(in: text)..<selected.upperBound.utf16Offset(in: text)
+        }
+        let result = DraftText.insert(dictated, into: text, replacing: range)
+        note.text = result.text
+        try? store.container.mainContext.save()
+        draftSelection = TextSelection(
+            insertionPoint: String.Index(utf16Offset: result.cursor, in: result.text))
+    }
+
+    private func saveDraft() async {
+        guard let note = liveDraft else { return }
+        isEditingDraft = false
+        draftNotice = nil
+        if let obsidian, obsidian.isEnabled {
+            guard await obsidian.save(note) else {
+                draftNotice = obsidian.lastError ?? "Couldn’t save to Obsidian."
+                return
+            }
+            showToast("Saved to Obsidian")
+        } else {
+            showToast("Saved to Notes")
+        }
+        note.isDraft = nil
+        try? store.container.mainContext.save()
+        draft = nil
+        draftSelection = nil
+    }
+
+    private func discardDraft() {
+        guard let note = liveDraft else { return }
+        isEditingDraft = false
+        draft = nil
+        draftSelection = nil
+        draftNotice = nil
+        store.container.mainContext.delete(note)
+        try? store.container.mainContext.save()
     }
 }
 

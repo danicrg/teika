@@ -158,50 +158,83 @@ final class ObsidianExportTests: XCTestCase {
 
     // MARK: exporter
 
-    func testNewNotesAndEditsReachTheVault() async throws {
+    func testNothingReachesTheVaultUntilSaved() async throws {
         let (store, exporter) = try makeExporter()
-        let note = try store.add(text: "Remember the dentist", createdAt: date)
-        await exporter.flush()
+        let note = try store.add(text: "Remember the dentist", createdAt: date, isDraft: true)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertNil(note.vaultState)
+        XCTAssertEqual(try markdownFiles(), [])
 
+        let saved = await exporter.save(note)
+        XCTAssertTrue(saved)
         XCTAssertEqual(note.vaultState, .saved)
         let path = try XCTUnwrap(note.vaultPath)
-        XCTAssertTrue(try read(path).hasSuffix("---\nRemember the dentist"))
-        XCTAssertEqual(exporter.createdSerial, 1)
+        XCTAssertEqual(try read(path), "---\ncreated: 2026-11-05\n---\nRemember the dentist")
+        XCTAssertEqual(exporter.savedSerial, 1)
+    }
+
+    func testSavingAgainUpdatesTheSameFileUnlessObsidianChangedIt() async throws {
+        let (store, exporter) = try makeExporter()
+        let note = try store.add(text: "Remember the dentist", createdAt: date)
+        await exporter.save(note)
+        let path = try XCTUnwrap(note.vaultPath)
 
         note.text = "Remember the dentist on Friday"
-        exporter.noteEdited(note, delay: .milliseconds(10))
-        await exporter.flush()
-        XCTAssertTrue(try read(path).hasSuffix("---\nRemember the dentist on Friday"))
-        XCTAssertEqual(exporter.createdSerial, 1, "an edit must not create a second file")
+        XCTAssertTrue(note.hasUnsavedVaultChanges)
+        XCTAssertEqual(try read(path), "---\ncreated: 2026-11-05\n---\nRemember the dentist", "edits wait for Save")
+        await exporter.save(note)
+        XCTAssertFalse(note.hasUnsavedVaultChanges)
+        XCTAssertEqual(try read(path), "---\ncreated: 2026-11-05\n---\nRemember the dentist on Friday")
+        XCTAssertEqual(try markdownFiles().count, 1, "a second save must not create a second file")
 
         try write(path, "changed in Obsidian")
         note.text = "Teika edit"
-        exporter.noteEdited(note, delay: .zero)
-        await exporter.flush()
+        let overwrote = await exporter.save(note)
+        XCTAssertFalse(overwrote)
         XCTAssertEqual(note.vaultState, .editedElsewhere)
         XCTAssertEqual(try read(path), "changed in Obsidian")
 
-        exporter.saveAsNewNote(note)
-        await exporter.flush()
+        await exporter.saveAsNewNote(note)
         XCTAssertEqual(note.vaultState, .saved)
         XCTAssertNotEqual(note.vaultPath, path)
         XCTAssertTrue(try read(try XCTUnwrap(note.vaultPath)).hasSuffix("---\nTeika edit"))
     }
 
-    func testNotesFromBeforeTheVaultWasSetUpStayOut() async throws {
-        let defaults = UserDefaults(suiteName: "obsidian-\(UUID().uuidString)")!
-        let store = try NoteStore(inMemory: true, defaults: defaults)
-        let old = try store.add(text: "Before", createdAt: date)
-        defaults.set(true, forKey: ObsidianExporter.enabledKey)
-        defaults.set(Data([1]), forKey: ObsidianExporter.bookmarkKey)
-        let exporter = ObsidianExporter(store: store) { [vault] in VaultWriter(root: vault!, scoped: false) }
-        await exporter.flush()
-        XCTAssertNil(old.vaultState)
-        XCTAssertNil(old.vaultPath)
+    func testEmptyNotesAreNotSaved() async throws {
+        let (store, exporter) = try makeExporter()
+        let note = try store.add(text: "  \n", createdAt: date)
+        let saved = await exporter.save(note)
+        XCTAssertFalse(saved)
+        XCTAssertEqual(try markdownFiles(), [])
+    }
 
-        exporter.send(old)
-        await exporter.flush()
-        XCTAssertEqual(old.vaultState, .saved)
+    // MARK: drafts
+
+    func testTheNewestDraftIsResumed() throws {
+        let store = try NoteStore(inMemory: true)
+        _ = try store.add(text: "Finished", createdAt: date)
+        _ = try store.add(text: "Old draft", createdAt: date, isDraft: true)
+        let newest = try store.add(text: "New draft", createdAt: date.addingTimeInterval(60), isDraft: true)
+        XCTAssertEqual(store.currentDraft()?.persistentModelID, newest.persistentModelID)
+        newest.isDraft = nil
+        XCTAssertEqual(store.currentDraft()?.text, "Old draft")
+    }
+
+    func testDictationGoesInAtTheCursorWithSensibleSpacing() {
+        XCTAssertEqual(DraftText.insert("More.", into: "First thought.").text, "First thought. More.")
+        XCTAssertEqual(DraftText.insert(" More. ", into: "Line\n").text, "Line\nMore.")
+        XCTAssertEqual(DraftText.insert("Start.", into: "").text, "Start.")
+
+        let middle = DraftText.insert("really", into: "I want coffee.", replacing: 7..<7)
+        XCTAssertEqual(middle.text, "I want really coffee.")
+        XCTAssertEqual(middle.cursor, 14)
+
+        let replaced = DraftText.insert("tea", into: "I want coffee.", replacing: 7..<13)
+        XCTAssertEqual(replaced.text, "I want tea.")
+        XCTAssertEqual(replaced.cursor, 10)
+
+        XCTAssertEqual(DraftText.insert("x", into: "abc", replacing: 10..<20).text, "abc x")
+        XCTAssertEqual(DraftText.insert("  ", into: "abc").text, "abc")
     }
 
     // MARK: helpers
@@ -214,6 +247,11 @@ final class ObsidianExportTests: XCTestCase {
         let store = try NoteStore(inMemory: true, defaults: defaults)
         let exporter = ObsidianExporter(store: store) { [vault] in VaultWriter(root: vault!, scoped: false) }
         return (store, exporter)
+    }
+
+    private func markdownFiles() throws -> [String] {
+        try FileManager.default.subpathsOfDirectory(atPath: vault.path(percentEncoded: false))
+            .filter { $0.hasSuffix(".md") && !$0.hasPrefix("Templates/") }
     }
 
     private func write(_ path: String, _ text: String) throws {
