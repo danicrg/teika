@@ -31,7 +31,7 @@ final class TeikaSceneDelegate: NSObject, UIWindowSceneDelegate {
     }
 
     private func handle(_ shortcutItem: UIApplicationShortcutItem?) -> Bool {
-        guard shortcutItem?.type == "com.gustavscirulis.teika.record" else { return false }
+        guard shortcutItem?.type == "com.danicrg.teika.record" else { return false }
         RecordingLauncher.shared.request()
         return true
     }

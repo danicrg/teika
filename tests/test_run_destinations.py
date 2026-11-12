@@ -88,13 +88,13 @@ with open('launch-args.jsonl', 'a') as log:
         self.assertIn(bundle, (self.root / "launch-args.jsonl").read_text())
 
     def test_remembered_phone_uses_ios_scheme(self):
-        self.assert_selected(None, "Teika", "phone-1", "com.gustavscirulis.teika")
+        self.assert_selected(None, "Teika", "phone-1", "com.danicrg.teika")
 
     def test_explicit_phone_uses_ios_scheme(self):
-        self.assert_selected("phone-1", "Teika", "phone-1", "com.gustavscirulis.teika")
+        self.assert_selected("phone-1", "Teika", "phone-1", "com.danicrg.teika")
 
     def test_watch_simulator_uses_watch_scheme(self):
-        self.assert_selected("watch-1", "TeikaWatch", "watch-1", "com.gustavscirulis.teika.watchkitapp")
+        self.assert_selected("watch-1", "TeikaWatch", "watch-1", "com.danicrg.teika.watchkitapp")
 
     def test_unavailable_destination_is_rejected_before_building(self):
         result = self.run_app("unavailable-phone")

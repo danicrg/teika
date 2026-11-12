@@ -6,7 +6,7 @@ configs:
   Debug: debug
   Release: release
 options:
-  bundleIdPrefix: com.gustavscirulis
+  bundleIdPrefix: com.danicrg
   deploymentTarget:
     iOS: "26.5"
     watchOS: "26.0"
@@ -61,7 +61,7 @@ targets:
           subpath: "$(CONTENTS_FOLDER_PATH)/Watch"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika
         PRODUCT_NAME: $(TARGET_NAME)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: teika/Info.plist
@@ -103,7 +103,7 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika.widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika.widget
         PRODUCT_NAME: $(TARGET_NAME)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: TeikaWidget/Info.plist
@@ -129,7 +129,7 @@ targets:
       base:
         # Must be prefixed by the watch app's identifier, the same rule that applies to
         # the watch app against the phone's.
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika.watchkitapp.widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika.watchkitapp.widget
         PRODUCT_NAME: $(TARGET_NAME)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: TeikaWatchWidget/Info.plist
@@ -170,7 +170,7 @@ targets:
       base:
         # Must be prefixed by the phone app's identifier or the watch app will not
         # install.
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika.watchkitapp
         PRODUCT_NAME: $(TARGET_NAME)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: TeikaWatch/Info.plist
@@ -182,7 +182,7 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_WKApplication: YES
-        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.gustavscirulis.teika
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.danicrg.teika
         INFOPLIST_KEY_CFBundleDisplayName: Teika
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Teika uses the microphone to record what you say, then sends it to your iPhone to turn into text."
         INFOPLIST_KEY_NSMotionUsageDescription: "Teika uses device motion to tilt the voice orb. Motion data is never stored or shared."
@@ -196,7 +196,7 @@ targets:
       - target: Teika
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika.uitests
         GENERATE_INFOPLIST_FILE: YES
         RUN_MODEL_DOWNLOAD_TEST: NO
         INFOPLIST_KEY_RUN_MODEL_DOWNLOAD_TEST: "$(RUN_MODEL_DOWNLOAD_TEST)"
@@ -211,7 +211,7 @@ targets:
       - target: Teika
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika.tests
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.0"
   TeikaWatchTests:
@@ -224,7 +224,7 @@ targets:
       - target: TeikaWatch
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gustavscirulis.teika.watchkitapp.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.danicrg.teika.watchkitapp.tests
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.0"
 schemes:

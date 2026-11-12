@@ -5,7 +5,7 @@ import WatchKit
 import os
 
 nonisolated private let log = Logger(
-    subsystem: "com.gustavscirulis.teika", category: "watch-link")
+    subsystem: "com.danicrg.teika", category: "watch-link")
 
 /// The Watch capture state machine. Reachability affects only the confirmation copy;
 /// after prior phone setup, recordings are accepted into a persistent local outbox.

@@ -21,7 +21,7 @@ import native_validation
 ROOT = Path(__file__).resolve().parents[1]
 READ_ONLY = False
 APP_ID = "6796609245"
-BUNDLE = "com.gustavscirulis.teika"
+BUNDLE = "com.danicrg.teika"
 SUBMITTED = {"WAITING_FOR_REVIEW", "IN_REVIEW", "PENDING_APPLE_RELEASE", "PROCESSING_FOR_DISTRIBUTION",
              "READY_FOR_DISTRIBUTION", "READY_FOR_SALE"}
 DISTRIBUTED = {"READY_FOR_DISTRIBUTION", "READY_FOR_SALE"}

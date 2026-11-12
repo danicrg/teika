@@ -18,8 +18,8 @@ TARGET_STATE_FILE="$PWD/.run-last-target"
 # to build is decided by the destination you pick rather than by a flag.
 #   scheme | bundle id | simulator product dir | device product dir
 TARGETS=(
-  "Teika|com.gustavscirulis.teika|iphonesimulator|iphoneos"
-  "TeikaWatch|com.gustavscirulis.teika.watchkitapp|watchsimulator|watchos"
+  "Teika|com.danicrg.teika|iphonesimulator|iphoneos"
+  "TeikaWatch|com.danicrg.teika.watchkitapp|watchsimulator|watchos"
 )
 
 if [[ -t 1 ]]; then

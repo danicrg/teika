@@ -19,7 +19,7 @@ final class NetworkMonitor {
             let expensive = path.isExpensive
             Task { @MainActor in self.isExpensive = expensive }
         }
-        monitor.start(queue: DispatchQueue(label: "com.gustavscirulis.teika.network"))
+        monitor.start(queue: DispatchQueue(label: "com.danicrg.teika.network"))
     }
 
     deinit {

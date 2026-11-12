@@ -9,7 +9,7 @@ import WidgetKit
 /// one would start a recording on the phone in your pocket — the opposite of what
 /// someone reaching for their wrist means.
 struct WatchRecordControl: ControlWidget {
-    static let kind = "com.gustavscirulis.teika.watchkitapp.control.record"
+    static let kind = "com.danicrg.teika.watchkitapp.control.record"
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {

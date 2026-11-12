@@ -2,7 +2,7 @@ import SwiftUI
 import WidgetKit
 
 struct RecordWidget: Widget {
-    static let kind = "com.gustavscirulis.teika.widget.record"
+    static let kind = "com.danicrg.teika.widget.record"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: Self.kind, provider: RecordTimelineProvider()) { _ in

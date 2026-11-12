@@ -14,7 +14,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.gustavscirulis.teika</string>
+			<string>com.danicrg.teika</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>teika</string>
@@ -44,7 +44,7 @@
 			<key>UIApplicationShortcutItemTitle</key>
 			<string>New Recording</string>
 			<key>UIApplicationShortcutItemType</key>
-			<string>com.gustavscirulis.teika.record</string>
+			<string>com.danicrg.teika.record</string>
 		</dict>
 	</array>
 </dict>

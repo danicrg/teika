@@ -121,8 +121,8 @@ public final class AppleClient {
     public func app(id: String) async throws -> JSON {
         let object = try await request("/v1/apps/\(id)")
         guard let app = object["data"] as? JSON,
-              (app["attributes"] as? JSON)?["bundleId"] as? String == "com.gustavscirulis.teika" else {
-            throw ReleaseError("App ID does not identify Teika (com.gustavscirulis.teika)")
+              (app["attributes"] as? JSON)?["bundleId"] as? String == "com.danicrg.teika" else {
+            throw ReleaseError("App ID does not identify Teika (com.danicrg.teika)")
         }
         return app
     }

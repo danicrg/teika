@@ -122,7 +122,7 @@ def capture(root, version, family, dry_run=False):
                     "-destination", "id=" + udid, "-derivedDataPath", root / "DerivedData", "build"], output / (name + "-build.log"))
             sdk = "watchsimulator" if name == "watch" else "iphonesimulator"
             app = root / "DerivedData/Build/Products" / ("Debug-" + sdk) / (scheme + ".app")
-            bundle = "com.gustavscirulis.teika" + (".watchkitapp" if name == "watch" else "")
+            bundle = "com.danicrg.teika" + (".watchkitapp" if name == "watch" else "")
             run(["xcrun", "simctl", "install", udid, app])
             files = []
             for scene in scenes:

@@ -5,7 +5,7 @@ import WatchConnectivity
 import os
 
 nonisolated private let log = Logger(
-    subsystem: "com.gustavscirulis.teika", category: "watch-link")
+    subsystem: "com.danicrg.teika", category: "watch-link")
 
 /// Receives persistent Watch transfers, keeps them on disk, and drains them through the
 /// same one-at-a-time inference scheduler as foreground iPhone recordings.
