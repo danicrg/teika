@@ -396,13 +396,9 @@ struct ContentView: View {
         case .idle:
             break
         }
-        guard let text = watchInbox.take() else { return }
-        // Open it for review unless another note is already being worked on here; it
-        // waits in To review either way.
-        if liveDraft == nil {
-            if let note = store.currentDraft(), note.watchClipID != nil { openDraft(note) }
-            else { present(.plain(text)) }
-        }
+        // The note is already in To review; opening the app stays on the record screen.
+        guard watchInbox.take() != nil else { return }
+        showToast("Watch note in To review")
     }
 
     private var transcriptView: some View {

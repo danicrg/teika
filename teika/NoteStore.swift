@@ -42,12 +42,14 @@ final class NoteStore {
     }
 
     /// The newest unsaved draft, so a draft survives the app being closed.
+    /// The newest unsaved note dictated on this phone. Watch notes are left out: they
+    /// wait in To review rather than taking over the record screen.
     func currentDraft() -> Note? {
         let descriptor = FetchDescriptor<Note>(
             predicate: #Predicate { $0.isDraft == true },
             sortBy: [SortDescriptor(\Note.createdAt, order: .reverse)])
         // Re-check in memory: a draft finished but not yet saved still matches the store.
-        return (try? container.mainContext.fetch(descriptor))?.first { $0.isDraft == true }
+        return (try? container.mainContext.fetch(descriptor))?.first { $0.isDraft == true && $0.watchClipID == nil }
     }
 
     func note(forWatchClipID clipID: String) throws -> Note? {

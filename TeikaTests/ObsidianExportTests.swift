@@ -225,7 +225,8 @@ final class ObsidianExportTests: XCTestCase {
         let watch = try store.addWatchNote(text: "From the wrist", createdAt: date, clipID: "clip-1")
         XCTAssertTrue(watch.inserted)
         XCTAssertEqual(watch.note.isDraft, true)
-        XCTAssertEqual(store.currentDraft()?.watchClipID, "clip-1")
+        // It waits in To review instead of opening on the record screen.
+        XCTAssertNil(store.currentDraft())
         // A retried transfer must not turn a reviewed note back into a draft.
         watch.note.isDraft = nil
         let again = try store.addWatchNote(text: "From the wrist", createdAt: date, clipID: "clip-1")
