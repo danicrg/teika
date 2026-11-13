@@ -17,6 +17,7 @@ enum Route: Hashable {
 struct ContentView: View {
     @Bindable var transcriber: SpeechTranscriber
     @Environment(\.scenePhase) private var scenePhase
+    @State private var backgroundedAt: Date?
     let store: NoteStore
     let watchInbox: WatchNoteInbox
     let exporter: TaskExportCoordinator
@@ -220,7 +221,6 @@ struct ContentView: View {
                     copyToClipboard(text)
                 }
             }
-            if let resumed = store.currentDraft() { openDraft(resumed) }
             presentWatchNote()
             drainLaunchRequest()
             await transcriber.prepareIfNeeded()
@@ -274,11 +274,19 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 armedStart = nil
+                backgroundedAt = .now
+                try? store.container.mainContext.save()
                 #if DEBUG
                 screenshotAudioMonitor.stop()
                 #endif
             }
             if phase == .active {
+                // Coming back after a while starts clean: an unsaved note waits in
+                // To review. A quick glance at another app keeps it open.
+                if let away = backgroundedAt, Date.now.timeIntervalSince(away) > 60 {
+                    closeDraft()
+                }
+                backgroundedAt = nil
                 presentWatchNote()
                 #if DEBUG
                 if showsScreenshotRecording && AppStoreScreenshotContent.launchScene == nil {
@@ -946,6 +954,15 @@ struct ContentView: View {
         try? store.container.mainContext.save()
         draft = nil
         draftSelection = nil
+    }
+
+    /// Leaves the note unsaved, in To review, and clears the screen.
+    private func closeDraft() {
+        guard draft != nil else { return }
+        isEditingDraft = false
+        draft = nil
+        draftSelection = nil
+        draftNotice = nil
     }
 
     private func discardDraft() {

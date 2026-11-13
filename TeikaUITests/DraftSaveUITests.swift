@@ -1,6 +1,6 @@
 import XCTest
 
-/// Dictate (stood in for by a draft saved at launch), edit, then Save: the note reaches
+/// Dictate (stood in for by an unsaved note made at launch), edit, then Save: the note reaches
 /// the vault folder only at that point. Uses the DEBUG vault override, so it needs the
 /// Simulator and a writable folder; it skips itself elsewhere.
 final class DraftSaveUITests: XCTestCase {
@@ -14,16 +14,17 @@ final class DraftSaveUITests: XCTestCase {
         ]
         app.launch()
 
+        // The app opens on the record screen; the unsaved note waits in To review.
         let editor = app.textViews["Note text"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 10))
-        XCTAssertEqual(editor.value as? String, "Pick up the bike from the shop.")
-        XCTAssertTrue(app.buttons["Discard note"].exists)
-
-        // It also waits in the library's To review section, and opens back here from it.
-        app.buttons["Notes"].tap()
+        let notes = app.buttons["Notes"]
+        XCTAssertTrue(notes.waitForExistence(timeout: 10))
+        XCTAssertFalse(editor.exists)
+        notes.tap()
         XCTAssertTrue(app.staticTexts["To review"].waitForExistence(timeout: 3))
         app.staticTexts["Pick up the bike from the shop."].tap()
         XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertEqual(editor.value as? String, "Pick up the bike from the shop.")
+        XCTAssertTrue(app.buttons["Discard note"].exists)
 
         // Just past the end of the first line, where a thumb would put the cursor.
         editor.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.0))
