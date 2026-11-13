@@ -98,6 +98,9 @@ Confirmed, from the code:
 - A **Start Recording** widget is available on the iPhone Home Screen and Lock
   Screen, plus a Control Center control. The same action is available through
   Shortcuts and Siri; each opens Teika and starts a fresh recording.
+- On Apple Watch, a **Start Recording** complication (circular, corner,
+  rectangular, inline) sits on the watch face and in the Smart Stack, plus a
+  Control Center control; each opens Teika on the watch and starts recording.
 - The model auto-detects language (`language: nil`) across 25 European
   languages — real, but untested by the developer, so the site states it only as
   the model's documented capability, not as a tested Teika feature.

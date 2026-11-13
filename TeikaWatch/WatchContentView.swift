@@ -5,7 +5,7 @@ struct WatchContentView: View {
     /// `onAppear` does not fire again when the app returns from the background — the view
     /// never disappeared — so this is what tells the link it is being looked at again.
     @Environment(\.scenePhase) private var scenePhase
-    /// Where a Control Center tap lands. The control's `OpenIntent` runs its `perform()`
+    /// Where a Control Center or complication tap lands. The control's `OpenIntent` runs its `perform()`
     /// inside this app once the system has opened it, so the request is waiting here by
     /// the time the first frame is drawn.
     private let launcher = RecordingLauncher.shared
@@ -51,6 +51,11 @@ struct WatchContentView: View {
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             link.setActive(phase == .active)
+        }
+        // A watch-face complication tap arrives as `teika://record`.
+        .onOpenURL { url in
+            guard url.scheme == TeikaURL.scheme, url.host == TeikaURL.recordHost else { return }
+            launcher.request()
         }
         .onChange(of: launcher.pending) {
             drainLaunchRequest()
